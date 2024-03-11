@@ -14,6 +14,9 @@ using namespace std;
 vector<string> LHSVector;
 vector<vector<string>> RHSVector;
 
+unordered_set<string> uniqueRHSItems; // Set to store unique RHS items
+unordered_set<string> uniqueLHSItems; // Set to store unique items
+
 vector<string> universe;
 
 struct Rule {
@@ -33,17 +36,16 @@ bool contains(vector<string> vec, string str) {
 }
 
 void addLHS() {
-    unordered_set<string> uniqueItems; // Set to store unique items
 
     // Print the items in the LHS vector while ensuring uniqueness and order preservation
     for (int i = 0; i < LHSVector.size(); i++) {
-        if (uniqueItems.insert(LHSVector.at(i)).second) {
+        if (uniqueLHSItems.insert(LHSVector.at(i)).second) {
                 //cout << LHSVector.at(i) << " ";
                 universe.push_back(LHSVector.at(i));
 
         }
         for(string s : RHSVector.at(i)){
-            if (uniqueItems.insert(s).second && contains(LHSVector, s)) {
+            if (uniqueLHSItems.insert(s).second && contains(LHSVector, s)) {
                 //cout << s << " ";
                 universe.push_back(s);
             }
@@ -67,12 +69,10 @@ void addRHS() {
         }
     }
     
-    unordered_set<string> uniqueItems; // Set to store unique items
-
     // Iterate through RHSVector and insert unique items into the set
     for (int i = 0; i < copiedRHS.size(); i++) {
         for (string item : copiedRHS.at(i)) {
-            if (uniqueItems.insert(item).second) {
+            if (uniqueRHSItems.insert(item).second) {
                 //cout << item << " ";
                 universe.push_back(item);
             }
@@ -105,14 +105,27 @@ void createGrammar(){
 }
 
 // Function to print the grammar rule by rule
-void printGrammar() {
+void printGrammar(vector<Rule> mGrammar) {
     cout << "Grammar Rules:" << endl;
-    for (const auto& rule : grammar) {
+    for (const auto& rule : mGrammar) {
         cout << "LHS: " << rule.LHS << ", RHS: ";
         for (int rhsItem : rule.RHS) {
             cout << rhsItem << " ";
         }
         cout << std::endl;
+    }
+}
+
+void printStringGrammar(vector<Rule> grammar) {
+    for (const auto& rule : grammar) {
+        cout << universe[rule.LHS] << " -> ";
+        for (size_t i = 0; i < rule.RHS.size(); ++i) {
+            cout << universe[rule.RHS[i]];
+            if (i < rule.RHS.size() - 1) {
+                cout << " ";
+            }
+        }
+        cout << endl;
     }
 }
 
@@ -164,7 +177,7 @@ void ReadGrammar()
     addRHS();
     addLHS();
     createGrammar();
-    //printGrammar();
+    //printGrammar(grammar);
 }
 
 void printUniverse(){
@@ -184,9 +197,108 @@ void printTerminalsAndNoneTerminals()
 }
 
 // Task 2
-void RemoveUselessSymbols()
-{
-    cout << "2\n";
+void RemoveUselessSymbols() {
+    // Use this vector to determine whether a symbol is generating or not
+    vector<bool> generatingVec(universe.size(), false);
+
+    // epsilon is generating
+    generatingVec.at(0) = true;
+
+    // Set all terminals to be generating
+    for (int i = 2; i < uniqueRHSItems.size() + 2; i++) {
+        if (universe.size() > i) {
+            generatingVec.at(i) = true;
+        }
+    }    
+
+    bool changed = true; // Initialize changed to true to enter the loop
+
+    while (changed) {
+        changed = false; // Reset changed flag at the beginning of each iteration
+        for (const auto& rule : grammar) {
+            if (generatingVec.at(rule.LHS)) {
+                continue; // Skip rules where LHS is already generating
+            }
+            bool allGenerating = true; // Assume all RHS items are generating initially
+            for (int rhsItem : rule.RHS) {
+                // Check if any of the RHS items is non-generating
+                if (!generatingVec.at(rhsItem)) {
+                    allGenerating = false;
+                    break; // No need to continue checking the rest of RHS items
+                }
+            }
+            if (allGenerating) {
+                // If all RHS items are generating, mark LHS as generating
+                generatingVec.at(rule.LHS) = true;
+                changed = true; // Set changed to true if any change is made
+            }
+        }
+    }
+
+    // Remove non-generating rules
+    vector<Rule> generatingGrammar;
+
+    for (const auto& rule : grammar) {
+        if (generatingVec.at(rule.LHS)) {
+            generatingGrammar.push_back(rule);
+        }
+    }
+
+    // Print generating grammar
+    // cout << "Generating Grammar: \n";
+    // printGrammar(generatingGrammar);
+
+    // Use this vector to determine whether a symbol is reachable or not
+    vector<bool> reachableVec(universe.size(), false);
+
+    // epsilon is reachable
+    reachableVec.at(0) = true;
+
+    // Start non-terminal is reachable
+    if (!uniqueLHSItems.empty()) {
+        reachableVec.at(2 + uniqueRHSItems.size()) = true;
+    }
+
+    bool c = true; // Initialize c to true to enter the loop
+
+    while (c) {
+        c = false; // Reset c flag at the beginning of each iteration
+        for (const auto& rule : generatingGrammar) {
+            if (!reachableVec.at(rule.LHS)) {
+                continue; // Skip rules where LHS is not reachable
+            }
+            bool changeMade = false; // Flag to track if any changes are made for the current rule
+            for (int rhsItem : rule.RHS) {
+                if (!reachableVec.at(rhsItem)) {
+                    reachableVec.at(rhsItem) = true; // Update reachableVec if RHS item is not yet reachable
+                    changeMade = true; // Set changeMade to true if any change is made
+                }
+            }
+            if (changeMade) {
+                c = true; // Set c to true if any change is made for the current rule
+            }
+        }
+    }
+
+    // Remove all non-reachable rules
+    vector<Rule> usefulGrammar;
+
+    for (const auto& rule : generatingGrammar) {
+        bool reachableRule = true;
+        for (int rhsItem : rule.RHS) {
+            if (!reachableVec.at(rhsItem)) {
+                reachableRule = false;
+                break;
+            }
+        }
+        if (reachableRule) {
+            usefulGrammar.push_back(rule);
+        }
+    }
+
+    // Print useful grammar
+    // cout << "Useful Grammar: \n";
+    printStringGrammar(usefulGrammar);
 }
 
 // Task 3
