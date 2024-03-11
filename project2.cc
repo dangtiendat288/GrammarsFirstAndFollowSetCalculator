@@ -14,6 +14,15 @@ using namespace std;
 vector<string> LHSVector;
 vector<vector<string>> RHSVector;
 
+vector<string> universe;
+
+struct Rule {
+    int LHS;
+    vector<int> RHS;
+};
+
+vector<Rule> grammar;
+
 bool contains(vector<string> vec, string str) {
     for (string element : vec) {
         if (element == str) {
@@ -21,6 +30,90 @@ bool contains(vector<string> vec, string str) {
         }
     }
     return false;
+}
+
+void addLHS() {
+    unordered_set<string> uniqueItems; // Set to store unique items
+
+    // Print the items in the LHS vector while ensuring uniqueness and order preservation
+    for (int i = 0; i < LHSVector.size(); i++) {
+        if (uniqueItems.insert(LHSVector.at(i)).second) {
+                //cout << LHSVector.at(i) << " ";
+                universe.push_back(LHSVector.at(i));
+
+        }
+        for(string s : RHSVector.at(i)){
+            if (uniqueItems.insert(s).second && contains(LHSVector, s)) {
+                //cout << s << " ";
+                universe.push_back(s);
+            }
+        }
+    }
+}
+
+void addRHS() {
+
+    // Declare a copy of RHSVector
+    vector<vector<string>> copiedRHS = RHSVector;
+
+    // Remove common elements from RHSVector
+    for (auto iter = copiedRHS.begin(); iter != copiedRHS.end(); ++iter) {
+        for (auto sIter = iter->begin(); sIter != iter->end();) {
+            if (contains(LHSVector, *sIter) || *sIter == "#") {
+                sIter = iter->erase(sIter);
+            } else {
+                ++sIter;
+            }
+        }
+    }
+    
+    unordered_set<string> uniqueItems; // Set to store unique items
+
+    // Iterate through RHSVector and insert unique items into the set
+    for (int i = 0; i < copiedRHS.size(); i++) {
+        for (string item : copiedRHS.at(i)) {
+            if (uniqueItems.insert(item).second) {
+                //cout << item << " ";
+                universe.push_back(item);
+            }
+        }
+    }
+}
+
+// Function to get the index of a string in a vector of strings
+// Returns -1 if the string is not found
+int getIndex(const vector<string>& vec, const string& target) {
+    for (int i = 0; i < vec.size(); i++) {
+        if (vec[i] == target) {
+            return i; // Return the index if found
+        }
+    }
+    return -1; // Return -1 if not found
+}
+
+void createGrammar(){
+    for(int i = 0; i < LHSVector.size(); i++){
+        Rule r;
+        r.LHS = getIndex(universe, LHSVector.at(i));
+        vector<int> tempVec;
+        for(int j = 0; j < RHSVector.at(i).size(); j++){
+            tempVec.push_back(getIndex(universe, RHSVector.at(i).at(j)));
+        }
+        r.RHS = tempVec;
+        grammar.push_back(r);
+    }
+}
+
+// Function to print the grammar rule by rule
+void printGrammar() {
+    cout << "Grammar Rules:" << endl;
+    for (const auto& rule : grammar) {
+        cout << "LHS: " << rule.LHS << ", RHS: ";
+        for (int rhsItem : rule.RHS) {
+            cout << rhsItem << " ";
+        }
+        cout << std::endl;
+    }
 }
 
 // read grammar
@@ -67,57 +160,27 @@ void ReadGrammar()
         }
 
     }
+
+    addRHS();
+    addLHS();
+    createGrammar();
+    //printGrammar();
 }
 
-void printLHS() {
-    unordered_set<string> uniqueItems; // Set to store unique items
-
-    // Print the items in the LHS vector while ensuring uniqueness and order preservation
-    for (int i = 0; i < LHSVector.size(); i++) {
-        if (uniqueItems.insert(LHSVector.at(i)).second) {
-                cout << LHSVector.at(i) << " ";
-        }
-        for(string s : RHSVector.at(i)){
-            if (uniqueItems.insert(s).second && contains(LHSVector, s)) {
-                cout << s << " ";
+void printUniverse(){
+    if(universe.size() >= 2){
+        for(int i = 2; i < universe.size(); i++){
+            cout << universe.at(i);
+            if(i != universe.size() - 1){
+                cout << " ";
             }
         }
     }
 }
-
-void printRHS() {
-
-    // Declare a copy of RHSVector
-    vector<vector<string>> copiedRHS = RHSVector;
-
-    // Remove common elements from RHSVector
-    for (auto iter = copiedRHS.begin(); iter != copiedRHS.end(); ++iter) {
-        for (auto sIter = iter->begin(); sIter != iter->end();) {
-            if (contains(LHSVector, *sIter) || *sIter == "#") {
-                sIter = iter->erase(sIter);
-            } else {
-                ++sIter;
-            }
-        }
-    }
-    
-    unordered_set<string> uniqueItems; // Set to store unique items
-
-    // Iterate through RHSVector and insert unique items into the set
-    for (int i = 0; i < copiedRHS.size(); i++) {
-        for (string item : copiedRHS.at(i)) {
-            if (uniqueItems.insert(item).second) {
-                cout << item << " ";
-            }
-        }
-    }
-}
-
 // Task 1
 void printTerminalsAndNoneTerminals()
 {
-    printRHS();
-    printLHS();
+    printUniverse();
 }
 
 // Task 2
@@ -146,6 +209,9 @@ void CheckIfGrammarHasPredictiveParser()
     
 int main (int argc, char* argv[])
 {
+    universe.push_back("#");
+    universe.push_back("$");
+
     int task;
 
     if (argc < 2)
