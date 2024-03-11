@@ -9,6 +9,7 @@
 #include "lexer.h"
 #include <set>
 #include <unordered_set>
+#include <unordered_map>
 
 using namespace std;
 vector<string> LHSVector;
@@ -112,7 +113,7 @@ void printGrammar(vector<Rule> mGrammar) {
         for (int rhsItem : rule.RHS) {
             cout << rhsItem << " ";
         }
-        cout << std::endl;
+        cout << endl;
     }
 }
 
@@ -211,6 +212,11 @@ void RemoveUselessSymbols() {
         }
     }    
 
+    // for(bool a : generatingVec){
+    //     cout << a << " ";
+    // }
+    // cout << endl;
+
     bool changed = true; // Initialize changed to true to enter the loop
 
     while (changed) {
@@ -239,7 +245,15 @@ void RemoveUselessSymbols() {
     vector<Rule> generatingGrammar;
 
     for (const auto& rule : grammar) {
-        if (generatingVec.at(rule.LHS)) {
+        bool allGeneratingRHS = true;
+        for(int item : rule.RHS){
+            if(!generatingVec.at(item)){
+                allGeneratingRHS = false;
+                break;
+            }
+        }
+
+        if (generatingVec.at(rule.LHS) && allGeneratingRHS) {
             generatingGrammar.push_back(rule);
         }
     }
@@ -284,14 +298,14 @@ void RemoveUselessSymbols() {
     vector<Rule> usefulGrammar;
 
     for (const auto& rule : generatingGrammar) {
-        bool reachableRule = true;
+        bool allReachableRHS = true;
         for (int rhsItem : rule.RHS) {
             if (!reachableVec.at(rhsItem)) {
-                reachableRule = false;
+                allReachableRHS = false;
                 break;
             }
         }
-        if (reachableRule) {
+        if (reachableVec.at(rule.LHS) && allReachableRHS) {
             usefulGrammar.push_back(rule);
         }
     }
@@ -301,10 +315,54 @@ void RemoveUselessSymbols() {
     printStringGrammar(usefulGrammar);
 }
 
+//add set to a set helper method
+
+
+//printMap
+void printMap(unordered_map<int, unordered_set<int>>& map){
+    // Print all key-value pairs
+    for (auto& pair : map) {
+        cout << "first(" << pair.first << ") = ";
+        cout << "{ ";
+        for (int value : pair.second) {
+            cout << value << ", ";
+        }
+        cout << " } " << endl;
+    }
+}
+
 // Task 3
 void CalculateFirstSets()
 {
-    cout << "3\n";
+    //using map for first
+    //key = int of non-terminal on the universe
+    //value = first set of that key
+
+    //create empty first set for every LHS of the grammar
+    unordered_map<int, unordered_set<int>> first;
+    for(Rule r : grammar){
+        first[r.LHS] = unordered_set<int>();
+    }
+
+    //first of epsilon is epsilon
+    first[0].insert(0);
+
+    //first of terminals
+    for (int i = 2; i < uniqueRHSItems.size() + 2; i++) {
+        first[i].insert(i);
+    }
+
+    // printMap(first);
+    
+    //first set calculation
+    bool changed = 1;
+    while(changed){
+        //set changed to false;
+        changed = 0;
+        for(int i = 2 + uniqueRHSItems.size(); i <){
+
+        }
+    }
 }
 
 // Task 4
