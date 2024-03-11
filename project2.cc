@@ -73,9 +73,14 @@ void printLHS() {
     unordered_set<string> uniqueItems; // Set to store unique items
 
     // Print the items in the LHS vector while ensuring uniqueness and order preservation
-    for (string item : LHSVector) {
-        if (uniqueItems.insert(item).second) {
-            cout << item << " ";
+    for (int i = 0; i < LHSVector.size(); i++) {
+        if (uniqueItems.insert(LHSVector.at(i)).second) {
+                cout << LHSVector.at(i) << " ";
+        }
+        for(string s : RHSVector.at(i)){
+            if (uniqueItems.insert(s).second && contains(LHSVector, s)) {
+                cout << s << " ";
+            }
         }
     }
 }
@@ -86,14 +91,16 @@ void printRHS() {
     vector<vector<string>> copiedRHS = RHSVector;
 
     // Remove common elements from RHSVector
-    for (int i = 0; i < copiedRHS.size(); i++) {
-        for(int j = 0; j < copiedRHS.at(i).size(); j++){
-            if (contains(LHSVector, copiedRHS.at(i).at(j)) || copiedRHS.at(i).at(j) == "#") {
-                copiedRHS.at(i).erase(copiedRHS.at(i).begin() + j);
+    for (auto iter = copiedRHS.begin(); iter != copiedRHS.end(); ++iter) {
+        for (auto sIter = iter->begin(); sIter != iter->end();) {
+            if (contains(LHSVector, *sIter) || *sIter == "#") {
+                sIter = iter->erase(sIter);
+            } else {
+                ++sIter;
             }
         }
     }
-
+    
     unordered_set<string> uniqueItems; // Set to store unique items
 
     // Iterate through RHSVector and insert unique items into the set
