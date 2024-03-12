@@ -20,6 +20,8 @@ unordered_set<string> uniqueLHSItems; // Set to store unique items
 
 vector<string> universe;
 
+unordered_map<int, unordered_set<int>> first;
+
 struct Rule {
     int LHS;
     vector<int> RHS;
@@ -46,9 +48,11 @@ void addLHS() {
 
         }
         for(string s : RHSVector.at(i)){
-            if (uniqueLHSItems.insert(s).second && contains(LHSVector, s)) {
-                //cout << s << " ";
-                universe.push_back(s);
+            if(contains(LHSVector, s)){
+                if (uniqueLHSItems.insert(s).second) {
+                    //cout << s << " ";
+                    universe.push_back(s);
+                }
             }
         }
     }
@@ -315,20 +319,53 @@ void RemoveUselessSymbols() {
     printStringGrammar(usefulGrammar);
 }
 
-//add set to a set helper method
-
-
 //printMap
 void printMap(unordered_map<int, unordered_set<int>>& map){
-    // Print all key-value pairs
-    for (auto& pair : map) {
-        cout << "first(" << pair.first << ") = ";
-        cout << "{ ";
-        for (int value : pair.second) {
-            cout << value << ", ";
-        }
-        cout << " } " << endl;
+    set<int> keys;
+
+    // Copy keys from the map to the set
+    for (const auto& pair : map) {
+        keys.insert(pair.first);
     }
+
+    // Iterate over sorted keys and print corresponding key-value pairs
+    for (int key : keys) {
+        // Check if the key meets the condition
+        if (key >= 2 + uniqueRHSItems.size()) {
+            cout << "FIRST(" << universe[key] << ") = { ";
+            
+            //sort values
+            set<int> values;
+            for (int value : map.at(key)) {
+                values.insert(value);
+            }
+
+            bool firstValue = true;
+            for (int value : values) {
+                if (!firstValue) {
+                    cout << ", "; // Print separator if not the first value
+                } else {
+                    firstValue = false; // Update flag after printing the first value
+                }
+                cout << universe[value];
+            }
+            cout << " }" << endl;
+        }
+    }
+}
+
+bool addItemsWithoutEps(unordered_set<int>& destSet, const unordered_set<int>& sourceSet) {
+    bool changed = false;
+    for (const auto& item : sourceSet) {
+        if (item != 0 && destSet.insert(item).second) {
+            changed = true;
+        }
+    }
+    return changed;
+}
+
+bool containsValue(const unordered_set<int>& mySet, int value) {
+    return mySet.find(value) != mySet.end();
 }
 
 // Task 3
@@ -339,7 +376,6 @@ void CalculateFirstSets()
     //value = first set of that key
 
     //create empty first set for every LHS of the grammar
-    unordered_map<int, unordered_set<int>> first;
     for(Rule r : grammar){
         first[r.LHS] = unordered_set<int>();
     }
@@ -351,18 +387,47 @@ void CalculateFirstSets()
     for (int i = 2; i < uniqueRHSItems.size() + 2; i++) {
         first[i].insert(i);
     }
-
-    // printMap(first);
     
     //first set calculation
     bool changed = 1;
     while(changed){
         //set changed to false;
         changed = 0;
-        for(int i = 2 + uniqueRHSItems.size(); i <){
 
+        //iterate through every rule
+        for(Rule r : grammar){
+            //iterate through RHS
+            for (int i = 0; i < r.RHS.size();) {
+                // Check if all previous first[item] contain epsilon
+                bool allPreviousContainEpsilon = true;
+                for (int j = 0; j < i; ++j) {
+                    if (!containsValue(first[r.RHS.at(j)], 0)) {
+                        allPreviousContainEpsilon = false;
+                        break;
+                    }
+                }
+                
+                // Add first(first_item_in_RHS)\{epsilon} to first(LHS) if all previous contain 0
+                if (i == 0 || allPreviousContainEpsilon) {
+                    //if any item added to LHS, there is a change
+                    if (addItemsWithoutEps(first[r.LHS], first[r.RHS.at(i)])) {
+                        changed = true;
+                    }
+                }
+
+                //Check if epsilon appears at the first[last RHS item] and all previous first also contain epsilon
+                if(allPreviousContainEpsilon && (i == r.RHS.size() - 1) && (containsValue(first[r.RHS.at(i)], 0))){
+                    if (first[r.LHS].insert(0).second) {
+                    changed = true;
+                    }
+                }
+                // Increment i
+                ++i;
+            }            
         }
     }
+
+    printMap(first);
 }
 
 // Task 4
