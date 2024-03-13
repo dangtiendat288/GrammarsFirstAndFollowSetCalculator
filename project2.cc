@@ -22,6 +22,9 @@ vector<string> universe;
 
 unordered_map<int, unordered_set<int>> first;
 
+unordered_map<int, unordered_set<int>> follow;
+
+
 struct Rule {
     int LHS;
     vector<int> RHS;
@@ -36,6 +39,10 @@ bool contains(vector<string> vec, string str) {
         }
     }
     return false;
+}
+
+bool setContainsString(const unordered_set<string>& set, const string& str) {
+    return set.find(str) != set.end();
 }
 
 void addLHS() {
@@ -320,9 +327,10 @@ void RemoveUselessSymbols() {
 }
 
 //printMap
-void printMap(unordered_map<int, unordered_set<int>>& map){
+void printMap(unordered_map<int, unordered_set<int>>& map, int type){
     set<int> keys;
 
+    string typeString = type == 0 ? "FIRST(" : "FOLLOW("; 
     // Copy keys from the map to the set
     for (const auto& pair : map) {
         keys.insert(pair.first);
@@ -332,7 +340,7 @@ void printMap(unordered_map<int, unordered_set<int>>& map){
     for (int key : keys) {
         // Check if the key meets the condition
         if (key >= 2 + uniqueRHSItems.size()) {
-            cout << "FIRST(" << universe[key] << ") = { ";
+            cout << typeString << universe[key] << ") = { ";
             
             //sort values
             set<int> values;
@@ -368,8 +376,7 @@ bool containsValue(const unordered_set<int>& mySet, int value) {
     return mySet.find(value) != mySet.end();
 }
 
-// Task 3
-void CalculateFirstSets()
+void CalculateFirstSetsHelper()
 {
     //using map for first
     //key = int of non-terminal on the universe
@@ -426,14 +433,92 @@ void CalculateFirstSets()
             }            
         }
     }
+}
 
-    printMap(first);
+// Task 3
+void CalculateFirstSets(){
+    CalculateFirstSetsHelper();
+    printMap(first, 0);
 }
 
 // Task 4
 void CalculateFollowSets()
 {
-    cout << "4\n";
+    //Calculate first set
+    CalculateFirstSetsHelper();
+
+    //create empty follow set for every LHS of the grammar
+    for(Rule r : grammar){
+        follow[r.LHS] = unordered_set<int>();
+    }
+
+    //add $ to follow set of start non-terminal
+    follow[uniqueRHSItems.size() + 2].insert(1);
+
+    //calculating the follow set
+    bool changed = true;
+    while (changed) {
+        changed = false;
+
+        for (const Rule rule : grammar) {
+            const int currentLHS = rule.LHS;
+            const vector<int> currentRHS = rule.RHS;
+            
+            //iterate through RHS
+            for (int i = currentRHS.size() - 1; i >= 0;) {
+                bool allFollowingContainEpsilon = true;
+                int symbol = currentRHS[i];
+
+                // Check if all following first[item] contain epsilon
+                for (int j = currentRHS.size() - 1; j > i; j--) {
+                    if (!containsValue(first[currentRHS.at(j)], 0)) {
+                        allFollowingContainEpsilon = false;
+                        break;
+                    }
+                }
+
+                // Add follow(LHS)\{epsilon} to follow(item in RHS) if all following contain epsilon
+                if ((i == currentRHS.size() - 1) || allFollowingContainEpsilon) {
+                    //if any item added to follow[RHS's item], there is a change
+                    if (addItemsWithoutEps(follow[symbol], follow[currentLHS])) {
+                        changed = true;
+                    }
+                }
+                
+                //Rule 4
+                if(i + 1 < currentRHS.size()){
+                    //add the first of the i+1 symbol to the follow set of current symbol
+                    if (addItemsWithoutEps(follow[symbol], first[currentRHS[i+1]])) {
+                        changed = true;
+                    }
+                    int allFollowingContainEpsilonUptoX = i + 1;
+
+                    for(int x = i + 1; x < currentRHS.size(); x++){
+                        if (!containsValue(first[currentRHS.at(x)], 0)) {
+                            allFollowingContainEpsilonUptoX = x;
+                            break;
+                        }                   
+                    }
+
+                    // Add follow(LHS)\{epsilon} to follow(item in RHS) if all previous contain 0
+                    if (allFollowingContainEpsilonUptoX < currentRHS.size()) {
+                        //if any item added to follow[RHS's item], there is a change
+                        if (addItemsWithoutEps(follow[symbol], first[currentRHS.at(allFollowingContainEpsilonUptoX)])) {
+                            changed = true;
+                        }
+                    }
+
+                }
+
+                //Rule 5
+
+                //Decrement i
+                i--;
+
+            }
+        }
+    }
+    printMap(follow, 1);
 }
 
 // Task 5
