@@ -223,11 +223,6 @@ void RemoveUselessSymbols() {
         }
     }    
 
-    // for(bool a : generatingVec){
-    //     cout << a << " ";
-    // }
-    // cout << endl;
-
     bool changed = true; // Initialize changed to true to enter the loop
 
     while (changed) {
@@ -268,10 +263,6 @@ void RemoveUselessSymbols() {
             generatingGrammar.push_back(rule);
         }
     }
-
-    // Print generating grammar
-    // cout << "Generating Grammar: \n";
-    // printGrammar(generatingGrammar);
 
     // Use this vector to determine whether a symbol is reachable or not
     vector<bool> reachableVec(universe.size(), false);
@@ -321,8 +312,6 @@ void RemoveUselessSymbols() {
         }
     }
 
-    // Print useful grammar
-    // cout << "Useful Grammar: \n";
     printStringGrammar(usefulGrammar);
 }
 
@@ -521,10 +510,136 @@ void CalculateFollowSets()
     printMap(follow, 1);
 }
 
+bool compareRules(vector<Rule> rules1, vector<Rule> rules2) {
+    // Check if the sizes of both vectors are equal
+    if (rules1.size() != rules2.size()) {
+        return false;
+    }
+
+    // Iterate through each element of both vectors and compare them
+    for (int i = 0; i < rules1.size(); i++) {
+        // Check if the LHS of the rules is equal
+        if (rules1[i].LHS != rules2[i].LHS) {
+            return false;
+        }
+
+        // Check if the RHS of the rules is equal
+        if (!equal(rules1[i].RHS.begin(), rules1[i].RHS.end(), rules2[i].RHS.begin())) {          
+            return false;
+        }
+    }
+
+    // If all elements are equal, return true
+    return true;
+}
+
 // Task 5
 void CheckIfGrammarHasPredictiveParser()
 {
-    cout << "5\n";
+    bool predictiveParser = true;
+    // Use this vector to determine whether a symbol is generating or not
+    vector<bool> generatingVec(universe.size(), false);
+
+    // epsilon is generating
+    generatingVec.at(0) = true;
+
+    // Set all terminals to be generating
+    for (int i = 2; i < uniqueRHSItems.size() + 2; i++) {
+        if (universe.size() > i) {
+            generatingVec.at(i) = true;
+        }
+    }    
+
+    bool changed = true; // Initialize changed to true to enter the loop
+
+    while (changed) {
+        changed = false; // Reset changed flag at the beginning of each iteration
+        for (const auto& rule : grammar) {
+            if (generatingVec.at(rule.LHS)) {
+                continue; // Skip rules where LHS is already generating
+            }
+            bool allGenerating = true; // Assume all RHS items are generating initially
+            for (int rhsItem : rule.RHS) {
+                // Check if any of the RHS items is non-generating
+                if (!generatingVec.at(rhsItem)) {
+                    allGenerating = false;
+                    break; // No need to continue checking the rest of RHS items
+                }
+            }
+            if (allGenerating) {
+                // If all RHS items are generating, mark LHS as generating
+                generatingVec.at(rule.LHS) = true;
+                changed = true; // Set changed to true if any change is made
+            }
+        }
+    }
+
+    // Remove non-generating rules
+    vector<Rule> generatingGrammar;
+
+    for (const auto& rule : grammar) {
+        bool allGeneratingRHS = true;
+        for(int item : rule.RHS){
+            if(!generatingVec.at(item)){
+                allGeneratingRHS = false;
+                break;
+            }
+        }
+
+        if (generatingVec.at(rule.LHS) && allGeneratingRHS) {
+            generatingGrammar.push_back(rule);
+        }
+    }
+
+    // Use this vector to determine whether a symbol is reachable or not
+    vector<bool> reachableVec(universe.size(), false);
+
+    // epsilon is reachable
+    reachableVec.at(0) = true;
+
+    // Start non-terminal is reachable
+    if (!uniqueLHSItems.empty()) {
+        reachableVec.at(2 + uniqueRHSItems.size()) = true;
+    }
+
+    bool c = true; // Initialize c to true to enter the loop
+
+    while (c) {
+        c = false; // Reset c flag at the beginning of each iteration
+        for (const auto& rule : generatingGrammar) {
+            if (!reachableVec.at(rule.LHS)) {
+                continue; // Skip rules where LHS is not reachable
+            }
+            bool changeMade = false; // Flag to track if any changes are made for the current rule
+            for (int rhsItem : rule.RHS) {
+                if (!reachableVec.at(rhsItem)) {
+                    reachableVec.at(rhsItem) = true; // Update reachableVec if RHS item is not yet reachable
+                    changeMade = true; // Set changeMade to true if any change is made
+                }
+            }
+            if (changeMade) {
+                c = true; // Set c to true if any change is made for the current rule
+            }
+        }
+    }
+
+    // Remove all non-reachable rules
+    vector<Rule> usefulGrammar;
+
+    for (const auto& rule : generatingGrammar) {
+        bool allReachableRHS = true;
+        for (int rhsItem : rule.RHS) {
+            if (!reachableVec.at(rhsItem)) {
+                allReachableRHS = false;
+                break;
+            }
+        }
+        if (reachableVec.at(rule.LHS) && allReachableRHS) {
+            usefulGrammar.push_back(rule);
+        }
+    }
+
+    cout << (compareRules(usefulGrammar, grammar) ? "YES" : "NO");
 }
     
 int main (int argc, char* argv[])
