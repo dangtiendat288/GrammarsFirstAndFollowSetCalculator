@@ -430,8 +430,7 @@ void CalculateFirstSets(){
     printMap(first, 0);
 }
 
-// Task 4
-void CalculateFollowSets()
+void CalculateFollowSetsHelper()
 {
     //Calculate first set
     CalculateFirstSetsHelper();
@@ -507,6 +506,11 @@ void CalculateFollowSets()
             }
         }
     }
+}
+
+// Task 4
+void CalculateFollowSets(){
+    CalculateFollowSetsHelper();
     printMap(follow, 1);
 }
 
@@ -533,9 +537,21 @@ bool compareRules(vector<Rule> rules1, vector<Rule> rules2) {
     return true;
 }
 
+bool doSetsHaveCommonItems(unordered_set<int> set1, unordered_set<int> set2) {
+    for (int element : set1) {
+        if (set2.find(element) != set2.end())
+            return true;
+    }
+
+    return false;
+}
+
 // Task 5
 void CheckIfGrammarHasPredictiveParser()
 {
+    CalculateFirstSetsHelper();
+    CalculateFollowSetsHelper();
+
     bool predictiveParser = true;
     // Use this vector to determine whether a symbol is generating or not
     vector<bool> generatingVec(universe.size(), false);
@@ -639,7 +655,68 @@ void CheckIfGrammarHasPredictiveParser()
         }
     }
 
-    cout << (compareRules(usefulGrammar, grammar) ? "YES" : "NO");
+    //if the grammar has useless symbols, return no
+    if(!compareRules(usefulGrammar, grammar)){
+        cout << "NO";
+        return;
+    }
+    
+    //grammar has no useless symbol
+    //For every non-terminal A and any two rules
+    //Create a set of non-terminals that appears >= 2 in the grammar
+    unordered_set<int> repeatedNonTerm;
+    for(int i = 0; i < grammar.size(); i++){
+        int currentLHS = grammar[i].LHS;
+        if(i + 1 < grammar.size()){
+            for(int j = i + 1; j < grammar.size(); j++){
+                if(grammar[j].LHS == currentLHS){
+                    repeatedNonTerm.insert(currentLHS);
+                }
+            }
+        }
+    }
+
+    //Loop through every rule that has the given non-terminal
+    //Compare that rule with every rule with the same non-terminal
+    for(int currentLHS : repeatedNonTerm){
+        for(int i = 0; i < grammar.size(); i++){
+            if(grammar[i].LHS == currentLHS && (i + 1 < grammar.size())){
+                for(int j = i + 1; j < grammar.size(); j++){
+                    //Check if there is common item between the first() of those two
+                    //If yes, cout << "NO"; and return
+                    if((grammar[j].LHS == currentLHS) && doSetsHaveCommonItems(first[grammar[i].RHS[0]], first[grammar[j].RHS[0]])){
+                        cout << "NO";
+                        return;
+                    };
+                    
+                }
+            }
+        }
+    }
+
+    //Check all LHS that derives epsilon
+    //For every non-terminal A that derives epsilon
+    //Create a set of non-terminals that derives epsilon
+    unordered_set<int> epsilonNonTerm;
+
+    for(int i = 0; i < grammar.size(); i++){
+        int currentLHS = grammar[i].LHS;
+        if(containsValue(first[currentLHS], 0)){
+            epsilonNonTerm.insert(currentLHS);
+        }
+    }
+
+    for(int currentLHS : epsilonNonTerm){
+        //Check if there is common item between the first() and follow() of that LHS
+        //If yes, cout << "NO"; and return
+        if(doSetsHaveCommonItems(first[currentLHS], follow[currentLHS])){
+            cout << "NO";
+            return;
+        };        
+    }
+
+    //If the program reach this line, cout << "YES";
+    cout << "YES";
 }
     
 int main (int argc, char* argv[])
