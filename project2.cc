@@ -147,6 +147,8 @@ void ReadGrammar()
     LexicalAnalyzer lexer;
     Token token;
 
+    try {
+
     token = lexer.GetToken();
 
     LHSVector.push_back(token.lexeme);
@@ -190,6 +192,9 @@ void ReadGrammar()
     addLHS();
     createGrammar();
     //printGrammar(grammar);
+    } catch (exception& e) {
+        cout << "Syntax error!" << endl;
+    }
 }
 
 void printUniverse(){
